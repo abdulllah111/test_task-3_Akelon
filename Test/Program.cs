@@ -1,76 +1,98 @@
-﻿using Test.Controllers;
-using Test.Data.FromExcel;
-using Test.Data.FromExcel.Repositories;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 
-
-public class Program
+namespace Test
 {
-
-    public static async Task Main(string[] args)
+    class Program
     {
-        Console.WriteLine("Введите путь к файлу с данными:");
-        string? filePath = Console.ReadLine();
-
-        // Проверяем, что введенный путь не пустой
-        if (string.IsNullOrWhiteSpace(filePath))
+        static void Main(string[] args)
         {
-            Console.WriteLine("Некорректный путь к файлу.");
-            return;
-        }
-
-        var context = new ExcelContext(filePath);
-
-        var orderRepository = new OrderRepository(context);
-        var productRepository = new ProductRepository(context);
-        var clientRepository = new ClientRepository(context);
-
-        var orderController = new OrderController(orderRepository, productRepository, clientRepository);
-
-        bool Work = true;
-
-        while (Work == true)
-        {
-            System.Console.WriteLine($"\n\nМеню: Введите 1 - информации о клиентах, заказавших товар\n" +
-            "Введите 2 - изменение контактного лица клиента\nВведите 3 - клиента с наибольшим количеством заказов\nВедите 4 для выхода\n\n");
-
-            int selectedOption = int.Parse(Console.ReadLine()!);
-
-            switch (selectedOption)
+            var vacationDictionary = new Dictionary<string, List<DateTime>>()
             {
-                case 1:
-                    System.Console.WriteLine("Введите название товара:\n");
-                    string? productName = Console.ReadLine();
-                    var OrdersInfoByProductName = await orderController.GetOrdersInfoByProductName(productName!);
-                    foreach (var order in OrdersInfoByProductName)
+                ["Evans Eva Evanshevna"] = new List<DateTime>(),
+                ["Petrov Petr Petrovich"] = new List<DateTime>(),
+                ["Ivanova Julia Ivanovna"] = new List<DateTime>(),
+                ["Sidorov Sidor Sidorovich"] = new List<DateTime>(),
+                ["Ivanov Ivan Ivanovich"] = new List<DateTime>(),
+                ["Gagarin Yuri Gagarinovich"] = new List<DateTime>()
+            };
+
+            var availableWorkingDaysOfWeekWithoutWeekends = new List<string>() { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday" };
+
+            List<DateTime> vacations = new List<DateTime>();
+            var allVacationCount = 0;
+
+            foreach (var vacationList in vacationDictionary)
+            {
+                var dateList = vacationList.Value;
+                Random gen = new Random();
+                Random step = new Random();
+                DateTime start = new DateTime(DateTime.Now.Year, 1, 1);
+                DateTime end = new DateTime(DateTime.Today.Year, 12, 31);
+
+                int vacationCount = 28;
+                while (vacationCount > 0)
+                {
+                    int range = (end - start).Days;
+                    var startDate = start.AddDays(gen.Next(range));
+
+                    if (availableWorkingDaysOfWeekWithoutWeekends.Contains(startDate.DayOfWeek.ToString()))
                     {
-                        System.Console.WriteLine($"{order.ClientName} {order.Quantity} {order.Price} {order.OrderDate}\n");
+                        string[] vacationSteps = { "7", "14" };
+                        int vacIndex = gen.Next(vacationSteps.Length);
+                        var endDate = new DateTime(DateTime.Now.Year, 12, 31);
+                        float difference = 0;
+                        if (vacationSteps[vacIndex] == "7")
+                        {
+                            endDate = startDate.AddDays(7);
+                            difference = 7;
+                        }
+                        if (vacationSteps[vacIndex] == "14")
+                        {
+                            endDate = startDate.AddDays(14);
+                            difference = 14;
+                        }
+
+                        if (vacationCount <= 7)
+                        {
+                            endDate = startDate.AddDays(7);
+                            difference = 7;
+                        }
+
+                        bool canCreateVacation = false;
+                        bool existStart = dateList.Any(element => element.AddMonths(1) >= startDate && element.AddMonths(1) <= endDate);
+                        bool existEnd = dateList.Any(element => element.AddMonths(-1) <= startDate && element.AddMonths(-1) <= endDate);
+                        if (!vacations.Any(element => element >= startDate && element <= endDate) &&
+                            !vacations.Any(element => element.AddDays(3) >= startDate && element.AddDays(3) <= endDate) &&
+                            (!existStart || !existEnd))
+                        {
+                            canCreateVacation = true;
+                        }
+
+                        if (canCreateVacation)
+                        {
+                            for (DateTime dt = startDate; dt < endDate; dt = dt.AddDays(1))
+                            {
+                                vacations.Add(dt);
+                                dateList.Add(dt);
+                            }
+                            allVacationCount++;
+                            vacationCount -= (int)difference;
+                        }
                     }
-                    break;
-                case 2:
-                    System.Console.WriteLine("Введите наименование организации:\n");
-                    string? companyName = Console.ReadLine();
-                    System.Console.WriteLine("Введите ФИО нового контактного лица:\n");
-                    string? newContactName = Console.ReadLine();
-                    var updateClient = await orderController.UpdateClientContact(companyName!, newContactName!);
-                    System.Console.WriteLine($"Ok:  {updateClient.Contact}");
-                    break;
-                case 3:
-                    System.Console.WriteLine("Введите год:\n");
-                    int year = int.Parse(Console.ReadLine()!);
-                    System.Console.WriteLine("Введите месяц:\n");
-                    int month = int.Parse(Console.ReadLine()!);
-                    var goldenClient = await orderController.GetGoldenClient(year, month);
-                    System.Console.WriteLine(goldenClient.CompanyName);
-                    break;
-                case 4:
-                    Work = false;
-                    break;
-                default:
-                    Console.WriteLine("Некорректный ввод");
-                    break;
+                }
+            }
+
+            foreach (var vacationList in vacationDictionary)
+            {
+                var setDateList = vacationList.Value;
+                Console.WriteLine("Отпуск для " + vacationList.Key + " : ");
+                foreach (var date in setDateList)
+                {
+                    Console.WriteLine(date);
+                }
             }
         }
     }
 }
-
-
